@@ -1,0 +1,78 @@
+#And find the association between admission and gender and dept
+by_gender_dept = pd.crosstab(df["Admit"],[df["Dept"],df["Gender"]],values=df["Freq"],aggfunc=sum)
+by_gender_dept
+
+#And find the association between admission and gender
+by_gender_dept = pd.crosstab(df["Admit"],[df["Dept"],df["Gender"]],values=df["Freq"],aggfunc=sum,normalize="columns")
+by_gender_dept
+
+## Not in the admissions. Could there still be bias?
+- Where?
+
+
+So we learned that male applied more to bigger schools, and that produces the bias.
+## How can we visualize this to show that there is no bias in the admissions?
+- Which variables would we like to show?
+- What type of plot would be most appropriate?
+
+
+##Let's find the size of the departments
+size_dept = df.loc[df["Admit"]=="Admitted"].groupby("Dept").sum().reset_index()
+size_dept.columns = ["Dept","Size_dept"]
+size_dept.head()
+
+
+##And let's calculate the percentage of admitted students by gender. For this we need to pivot the column with Admitted/Rejected to make two columns
+
+
+#Columns already present
+variables_already_present = ["Gender","Dept"]
+
+#Column with the variables
+column_to_split = ["Admit"]
+
+#Column with the values
+column_with_values = "Freq"
+
+#Fix
+df_fixed = df.pivot_table(column_with_values,
+               variables_already_present,
+               column_to_split).reset_index()
+
+#Now make the column with the percentage of admitteed
+df_fixed["Perc_admitted"] = 100*df_fixed["Admitted"]/(df_fixed["Admitted"]+df_fixed["Rejected"])
+df_fixed["Applied"] = df_fixed["Admitted"]+df_fixed["Rejected"]
+df_fixed
+
+
+##Merge both datasets
+df_fixed = pd.merge(df_fixed,size_dept)
+df_fixed.head()
+
+
+male = df_fixed.loc[df_fixed["Gender"]=="Male"].sort_values(by="Dept")
+female = df_fixed.loc[df_fixed["Gender"]=="Female"].sort_values(by="Dept")
+
+
+
+#Make the background white
+sns.set(style="whitegrid",font_scale=1.2)
+
+#Figure
+plt.figure(figsize=(6,4))
+
+#Vertical lines between the y values of male and the y value of female
+plt.vlines(male["Size_dept"],male["Perc_admitted"],female["Perc_admitted"],color="gray",linewidth=4)
+
+plt.scatter(male["Size_dept"],male["Perc_admitted"],s=male["Applied"]/3,zorder=3,label="Women")
+plt.scatter(female["Size_dept"],female["Perc_admitted"],s=female["Applied"]/3,color="red",zorder=3,label="Men")
+plt.legend(loc="upper left")
+plt.xlabel("Size of department")
+plt.ylabel("% of accepted applicants")
+
+#Let's annotate it
+annotate_scatter("Size_dept","Perc_admitted","Dept",female,fontsize=14,right_offset=15)
+        
+        
+plt.title("bubble size $\propto$ number applicants ")
+sns.despine()
